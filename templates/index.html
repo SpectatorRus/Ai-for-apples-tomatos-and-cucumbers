@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍏 Конвертер урожая — YOLO Vision</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <span class="icon">🌾</span>
+            <h1>Конвертер урожая</h1>
+            <p>Загрузите фото — ИИ посчитает яблоки, огурцы и помидоры</p>
+        </div>
+
+        <form id="uploadForm" method="POST" enctype="multipart/form-data">
+            <div class="upload-zone" id="uploadZone">
+                <span class="upload-icon">📤</span>
+                <strong>Перетащите файл сюда или нажмите</strong>
+                <span class="file-name" id="fileName"></span>
+                <span class="hint">PNG, JPG, JPEG до 16 МБ</span>
+                <input type="file" name="image" id="imageInput" accept="image/*" required>
+            </div>
+            <div style="text-align: center;">
+                <button type="submit" class="btn" id="submitBtn">
+                    🔍 Распознать и посчитать
+                </button>
+            </div>
+        </form>
+
+        <div class="result-section" id="resultSection">
+            {% if img_data %}
+            <div class="result-card">
+                <div class="image-preview-wrapper" id="imageWrapper">
+                    <img src="data:image/jpeg;base64,{{ img_data }}" alt="Результат распознавания" id="resultImage">
+                    <button class="expand-btn" id="expandBtn" onclick="toggleImageSize()">
+                        🔍 Развернуть
+                    </button>
+                </div>
+                <div class="info-box">
+                    <span class="info-icon">📋</span>
+                    <div class="info-content">
+                        <div class="info-title">Результаты анализа</div>
+                        <div class="info-details">
+                            {{ text_info | safe }}
+                        </div>
+                        {% if total_compot is defined and total_banki is defined %}
+                        <div class="stats-row">
+                            {% if total_compot > 0 %}
+                            <div class="stat-chip">
+                                <span class="stat-value">{{ "%.2f"|format(total_compot) }}</span>
+                                <span class="stat-label">литров компота</span>
+                            </div>
+                            {% endif %}
+                            {% if total_banki > 0 %}
+                            <div class="stat-chip orange">
+                                <span class="stat-value">{{ "%.2f"|format(total_banki) }}</span>
+                                <span class="stat-label">банок солений</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="settings-note">
+            🎯 Точность распознавания: {{ confidence_threshold | default(50) }}% • Модель: YOLO11s
+        </div>
+    </div>
+
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('imageInput');
+        const fileNameDisplay = document.getElementById('fileName');
+        const resultSection = document.getElementById('resultSection');
+        const submitBtn = document.getElementById('submitBtn');
+        const imageWrapper = document.getElementById('imageWrapper');
+        const resultImage = document.getElementById('resultImage');
+        const expandBtn = document.getElementById('expandBtn');
+
+        // Показываем имя выбранного файла
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                fileNameDisplay.textContent = '📎 ' + this.files[0].name;
+                uploadZone.classList.add('has-file');
+            } else {
+                uploadZone.classList.remove('has-file');
+            }
+        });
+
+        // Drag-and-drop
+        uploadZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#4CAF50';
+            this.style.background = '#f1f8e9';
+        });
+
+        uploadZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#e0e0e0';
+            this.style.background = '#fafafa';
+        });
+
+        uploadZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#e0e0e0';
+            this.style.background = '#fafafa';
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                fileNameDisplay.textContent = '📎 ' + e.dataTransfer.files[0].name;
+                uploadZone.classList.add('has-file');
+            }
+        });
+
+        // Показываем результат, если он есть
+        {% if img_data %}
+        resultSection.classList.add('visible');
+        
+        // Проверяем, нужно ли показывать кнопку "Развернуть"
+        resultImage.addEventListener('load', checkImageHeight);
+        {% endif %}
+
+        // Индикатор загрузки
+        document.getElementById('uploadForm').addEventListener('submit', function() {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '⏳ Обрабатываем...';
+        });
+
+        // Функция разворачивания/сворачивания изображения
+        function toggleImageSize() {
+            imageWrapper.classList.toggle('expanded');
+            if (imageWrapper.classList.contains('expanded')) {
+                expandBtn.textContent = '🔍 Свернуть';
+            } else {
+                expandBtn.textContent = '🔍 Развернуть';
+                // Прокручиваем к началу изображения
+                imageWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // Проверяем, превышает ли изображение максимальную высоту
+        function checkImageHeight() {
+            if (resultImage && imageWrapper) {
+                const maxHeight = 500;
+                if (resultImage.naturalHeight > maxHeight || resultImage.naturalWidth > 800) {
+                    expandBtn.style.display = 'block';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
